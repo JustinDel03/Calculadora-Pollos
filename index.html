@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de pollos vendidos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    </style>
+</head>
+<body class="bg-slate-50">
+
+    <div class="min-h-screen p-4 sm:p-6 lg:p-8">
+        <div class="max-w-6xl mx-auto">
+            <header class="mb-10">
+                <h1 class="text-4xl font-bold text-slate-800 flex items-center gap-3">
+                    <i data-lucide="calculator" class="text-orange-500"></i>
+                    Calculadora de pollos vendidos
+                </h1>
+            </header>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                <!-- Columna Izquierda: Facturación -->
+                <div class="lg:col-span-2">
+                    <div class="bg-white rounded-lg shadow-sm">
+                        <div class="p-6">
+                            <h2 class="text-lg font-semibold text-slate-700 flex items-center gap-2">
+                                <i data-lucide="receipt"></i>
+                                Facturado en el sistema
+                            </h2>
+                            <p class="text-sm text-slate-500 mt-1">Introduce las cantidades facturadas en tu sistema.</p>
+                        </div>
+                        <div class="px-6 pb-6">
+                            <table class="w-full text-sm">
+                                <thead>
+                                    <tr class="border-b">
+                                        <th class="text-left font-medium text-slate-500 pb-2 w-[120px]">Item</th>
+                                        <th class="text-right font-medium text-slate-500 pb-2">Valor</th>
+                                        <th class="text-right font-medium text-slate-500 pb-2 w-[150px]">Cantidad</th>
+                                        <th class="text-right font-medium text-slate-500 pb-2">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="facturacion-body">
+                                    <!-- Filas generadas por JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="bg-slate-50/50 p-4 rounded-b-lg flex justify-end">
+                            <div class="text-right">
+                                <p class="text-sm text-slate-500">Total Facturados</p>
+                                <p id="total-facturado" class="text-2xl font-bold text-slate-900">0,00</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Columna Derecha: Reporte y Resumen -->
+                <div class="lg:col-span-1 space-y-8">
+                    <div class="bg-white rounded-lg shadow-sm">
+                        <div class="p-6">
+                            <h2 class="text-lg font-semibold text-slate-700 flex items-center gap-2">
+                                <i data-lucide="clipboard-list"></i>
+                                Valores del Reporte en fisico
+                            </h2>
+                            <p class="text-sm text-slate-500 mt-1">Introduce los valores de tu reporte físico.</p>
+                        </div>
+                        <div id="reporte-body" class="px-6 pb-6 space-y-4">
+                            <!-- Inputs generados por JS -->
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-lg shadow-sm">
+                        <div class="p-6">
+                            <h2 class="text-lg font-semibold text-slate-700 flex items-center gap-2">
+                                <i data-lucide="bar-chart-3"></i>
+                                Resumen
+                            </h2>
+                        </div>
+                        <div class="px-6 pb-6 space-y-3">
+                            <div class="flex justify-between items-center p-2 rounded-md">
+                                <span class="text-slate-600">Asados + Viejos</span>
+                                <span id="asa-vie" class="font-semibold text-slate-800">0,00</span>
+                            </div>
+                            <div class="flex justify-between items-center p-2 rounded-md">
+                                <span class="text-slate-600">Descartes + Consumo + Sobrantes</span>
+                                <span id="dcs" class="font-semibold text-slate-800">0,00</span>
+                            </div>
+                            <hr class="my-2">
+                            <div class="bg-blue-50 p-3 rounded-lg">
+                                <div class="flex justify-between items-center">
+                                    <span class="font-bold text-blue-800 flex items-center gap-2">
+                                        <i data-lucide="alert-circle"></i>
+                                        Utilizados
+                                    </span>
+                                    <span id="utilizados" class="font-bold text-2xl text-blue-800">0,00</span>
+                                </div>
+                            </div>
+                            <!-- RESULTADO FINAL DINÁMICO -->
+                            <div id="resultado-final-container" class="p-3 rounded-lg transition-colors duration-300">
+                                <div class="flex justify-between items-center">
+                                    <span id="resultado-final-label-container" class="font-bold flex items-center gap-2">
+                                        <i id="resultado-final-icon" data-lucide="check-circle-2"></i>
+                                        <span id="resultado-final-label"></span>
+                                    </span>
+                                    <span id="resultado-final-value" class="font-bold text-2xl"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const facturacionData = [
+                { id: "un-octavo", label: "1/8.", valor: 0.125, cantidad: 0 },
+                { id: "un-cuarto", label: "1/4.", valor: 0.25, cantidad: 0 },
+                { id: "dos-cuartos", label: "1/4+1/4", valor: 0.5, cantidad: 0 },
+                { id: "dos-medios", label: "1/2+1/2", valor: 1, cantidad: 0 },
+                { id: "uno-mas-uno", label: "1+1", valor: 2, cantidad: 0 },
+            ];
+
+            const reporteData = [
+                { id: 'asados', label: 'Asados', value: 0 },
+                { id: 'descartes', label: 'Descartes', value: 0 },
+                { id: 'consumidos', label: 'Consumidos', value: 0 },
+                { id: 'viejos', label: 'Viejos', value: 0 },
+                { id: 'sobrantes', label: 'Sobrantes', value: 0 },
+            ];
+
+            const formatNumber = (num) => new Intl.NumberFormat("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
+
+            const calculateAndRender = () => {
+                let totalFacturado = 0;
+                facturacionData.forEach(item => {
+                    const input = document.getElementById(`fact-input-${item.id}`);
+                    const cantidad = parseFloat(input.value) || 0;
+                    const totalItem = cantidad * item.valor;
+                    totalFacturado += totalItem;
+                    document.getElementById(`fact-total-${item.id}`).textContent = formatNumber(totalItem);
+                });
+                document.getElementById('total-facturado').textContent = formatNumber(totalFacturado);
+
+                const reporteValues = {};
+                reporteData.forEach(item => {
+                    const input = document.getElementById(`reporte-input-${item.id}`);
+                    reporteValues[item.id] = parseFloat(input.value) || 0;
+                });
+
+                const asaVie = reporteValues.asados + reporteValues.viejos;
+                const dcs = reporteValues.descartes + reporteValues.consumidos + reporteValues.sobrantes;
+                const utilizados = asaVie - dcs;
+                const faltanFacturar = totalFacturado - utilizados;
+
+                document.getElementById('asa-vie').textContent = formatNumber(asaVie);
+                document.getElementById('dcs').textContent = formatNumber(dcs);
+                document.getElementById('utilizados').textContent = formatNumber(utilizados);
+
+                // --- LÓGICA DEL RESULTADO FINAL DINÁMICO ---
+                const container = document.getElementById('resultado-final-container');
+                const labelContainer = document.getElementById('resultado-final-label-container');
+                const icon = document.getElementById('resultado-final-icon');
+                const label = document.getElementById('resultado-final-label');
+                const valueSpan = document.getElementById('resultado-final-value');
+
+                valueSpan.textContent = formatNumber(faltanFacturar);
+
+                if (faltanFacturar < 0) {
+                    // Negativo: Falta facturar (Rojo)
+                    container.className = 'bg-red-50 p-3 rounded-lg transition-colors duration-300';
+                    labelContainer.className = 'font-bold text-red-800 flex items-center gap-2';
+                    valueSpan.className = 'font-bold text-2xl text-red-800';
+                    label.textContent = 'Falta facturar';
+                    icon.setAttribute('data-lucide', 'alert-triangle');
+                } else if (faltanFacturar > 0) {
+                    // Positivo: Facturado de más (Azul)
+                    container.className = 'bg-sky-50 p-3 rounded-lg transition-colors duration-300';
+                    labelContainer.className = 'font-bold text-sky-800 flex items-center gap-2';
+                    valueSpan.className = 'font-bold text-2xl text-sky-800';
+                    label.textContent = 'Hay facturado de más';
+                    icon.setAttribute('data-lucide', 'info');
+                } else {
+                    // Cero: Cuadrado (Verde)
+                    container.className = 'bg-green-50 p-3 rounded-lg transition-colors duration-300';
+                    labelContainer.className = 'font-bold text-green-800 flex items-center gap-2';
+                    valueSpan.className = 'font-bold text-2xl text-green-800';
+                    label.textContent = 'Todo está cuadrado';
+                    icon.setAttribute('data-lucide', 'check-circle-2');
+                }
+                lucide.createIcons(); // Actualizar el icono
+            };
+
+            const facturacionBody = document.getElementById('facturacion-body');
+            facturacionData.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = 'border-b';
+                row.innerHTML = `
+                    <td class="py-3 font-medium text-slate-800">${item.label}</td>
+                    <td class="py-3 text-right text-slate-600">${item.valor.toFixed(3)}</td>
+                    <td class="py-3 text-right">
+                        <input type="number" id="fact-input-${item.id}" value="${item.cantidad}" class="w-full text-right bg-slate-50 rounded-md border-slate-300 shadow-sm focus:border-orange-500 focus:ring-orange-500" placeholder="0">
+                    </td>
+                    <td id="fact-total-${item.id}" class="py-3 text-right font-semibold text-slate-800">${formatNumber(0)}</td>
+                `;
+                facturacionBody.appendChild(row);
+            });
+
+            const reporteBody = document.getElementById('reporte-body');
+            reporteData.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between';
+                div.innerHTML = `
+                    <label for="reporte-input-${item.id}" class="capitalize text-slate-600">${item.label}</label>
+                    <input type="number" id="reporte-input-${item.id}" value="${item.value}" class="w-28 text-right bg-slate-50 rounded-md border-slate-300 shadow-sm focus:border-orange-500 focus:ring-orange-500" placeholder="0">
+                `;
+                reporteBody.appendChild(div);
+            });
+
+            document.querySelectorAll('input[type="number"]').forEach(input => {
+                input.addEventListener('input', calculateAndRender);
+            });
+
+            calculateAndRender();
+        });
+    </script>
+</body>
+</html>
