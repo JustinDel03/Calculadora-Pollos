@@ -117,6 +117,11 @@
         </div>
     </div>
 
+    <!-- Notificación Toast -->
+    <div id="toast-notification" class="fixed bottom-5 right-5 bg-slate-800 text-white py-2 px-4 rounded-lg shadow-lg opacity-0 translate-y-10 transition-all duration-300">
+        Se ha convertido la coma (,) en un punto (.) para el cálculo.
+    </div>
+
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const facturacionData = [
@@ -134,6 +139,18 @@
                 { id: 'viejos', label: 'Viejos', value: 0 },
                 { id: 'sobrantes', label: 'Sobrantes', value: 0 },
             ];
+
+            let toastShown = false;
+            const toast = document.getElementById('toast-notification');
+
+            const showToast = () => {
+                if (toastShown) return;
+                toast.classList.remove('opacity-0', 'translate-y-10');
+                toastShown = true;
+                setTimeout(() => {
+                    toast.classList.add('opacity-0', 'translate-y-10');
+                }, 3000);
+            };
 
             const formatNumber = (num) => new Intl.NumberFormat("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
 
@@ -163,7 +180,6 @@
                 document.getElementById('dcs').textContent = formatNumber(dcs);
                 document.getElementById('utilizados').textContent = formatNumber(utilizados);
 
-                // --- LÓGICA DEL RESULTADO FINAL DINÁMICO ---
                 const container = document.getElementById('resultado-final-container');
                 const labelContainer = document.getElementById('resultado-final-label-container');
                 const icon = document.getElementById('resultado-final-icon');
@@ -173,28 +189,34 @@
                 valueSpan.textContent = formatNumber(faltanFacturar);
 
                 if (faltanFacturar < 0) {
-                    // Negativo: Falta facturar (Rojo)
                     container.className = 'bg-red-50 p-3 rounded-lg transition-colors duration-300';
                     labelContainer.className = 'font-bold text-red-800 flex items-center gap-2';
                     valueSpan.className = 'font-bold text-2xl text-red-800';
                     label.textContent = 'Falta facturar';
                     icon.setAttribute('data-lucide', 'alert-triangle');
                 } else if (faltanFacturar > 0) {
-                    // Positivo: Facturado de más (Azul)
                     container.className = 'bg-sky-50 p-3 rounded-lg transition-colors duration-300';
                     labelContainer.className = 'font-bold text-sky-800 flex items-center gap-2';
                     valueSpan.className = 'font-bold text-2xl text-sky-800';
                     label.textContent = 'Hay facturado de más';
                     icon.setAttribute('data-lucide', 'info');
                 } else {
-                    // Cero: Cuadrado (Verde)
                     container.className = 'bg-green-50 p-3 rounded-lg transition-colors duration-300';
                     labelContainer.className = 'font-bold text-green-800 flex items-center gap-2';
                     valueSpan.className = 'font-bold text-2xl text-green-800';
                     label.textContent = 'Todo está cuadrado';
                     icon.setAttribute('data-lucide', 'check-circle-2');
                 }
-                lucide.createIcons(); // Actualizar el icono
+                lucide.createIcons();
+            };
+
+            const handleInput = (event) => {
+                const input = event.target;
+                if (input.value.includes(',')) {
+                    input.value = input.value.replace(/,/g, '.');
+                    showToast();
+                }
+                calculateAndRender();
             };
 
             const facturacionBody = document.getElementById('facturacion-body');
@@ -224,7 +246,7 @@
             });
 
             document.querySelectorAll('input[type="number"]').forEach(input => {
-                input.addEventListener('input', calculateAndRender);
+                input.addEventListener('input', handleInput);
             });
 
             calculateAndRender();
