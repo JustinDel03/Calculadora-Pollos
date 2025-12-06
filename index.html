@@ -76,6 +76,11 @@
                                 Valores del Reporte en físico
                             </h2>
                             <p class="text-sm text-slate-500 mt-1">Introduce los valores de tu reporte físico.</p>
+                            <!-- Agregado tip de expresiones matemáticas -->
+                            <p class="text-xs text-orange-500 mt-2 flex items-center gap-1">
+                                <i data-lucide="lightbulb" class="w-3 h-3"></i>
+                                Tip: Puedes usar expresiones como <code class="bg-orange-100 px-1 rounded">4 + 3/8</code>
+                            </p>
                         </div>
                         <div id="reporte-body" class="px-6 pb-6 space-y-4">
                             <!-- Inputs generados por JS -->
@@ -129,6 +134,11 @@
     <div id="toast-notification" class="fixed bottom-5 right-5 bg-slate-800 text-white py-2 px-4 rounded-lg shadow-lg opacity-0 translate-y-10 transition-all duration-300">
         Se ha convertido la coma (,) en un punto (.) para el cálculo.
     </div>
+    
+    <!-- Toast para expresiones matemáticas -->
+    <div id="toast-expression" class="fixed bottom-5 right-5 bg-orange-600 text-white py-2 px-4 rounded-lg shadow-lg opacity-0 translate-y-10 transition-all duration-300">
+        <span id="toast-expression-text"></span>
+    </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -153,6 +163,8 @@
 
             let toastShown = false;
             const toast = document.getElementById('toast-notification');
+            const toastExpression = document.getElementById('toast-expression');
+            const toastExpressionText = document.getElementById('toast-expression-text');
 
             const showToast = () => {
                 if (toastShown) return;
@@ -162,9 +174,93 @@
                     toast.classList.add('opacity-0', 'translate-y-10');
                 }, 3000);
             };
+            
+            const showExpressionToast = (expression, result) => {
+                toastExpressionText.textContent = `${expression} = ${result}`;
+                toastExpression.classList.remove('opacity-0', 'translate-y-10');
+                setTimeout(() => {
+                    toastExpression.classList.add('opacity-0', 'translate-y-10');
+                }, 2500);
+            };
 
             const formatNumber = (num) => new Intl.NumberFormat("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num);
             const formatPollos = (num) => new Intl.NumberFormat("es-ES", { minimumFractionDigits: 3, maximumFractionDigits: 3 }).format(num);
+
+            const parseExpression = (expr) => {
+                if (!expr || expr.trim() === '') return 0;
+                
+                // Reemplazar comas por puntos
+                let sanitized = expr.replace(/,/g, '.');
+                
+                // Verificar que solo contenga caracteres válidos: números, operadores, puntos, espacios
+                if (!/^[\d\s+\-*/().]+$/.test(sanitized)) {
+                    return parseFloat(sanitized) || 0;
+                }
+                
+                try {
+                    // Tokenizar la expresión
+                    const tokens = sanitized.match(/(\d+\.?\d*|\+|\-|\*|\/|$$|$$)/g);
+                    if (!tokens) return 0;
+                    
+                    // Evaluar usando una función segura
+                    const result = evaluateTokens(tokens);
+                    return isNaN(result) ? 0 : result;
+                } catch (e) {
+                    return parseFloat(sanitized) || 0;
+                }
+            };
+            
+            const evaluateTokens = (tokens) => {
+                let pos = 0;
+                
+                const parseNumber = () => {
+                    if (pos >= tokens.length) return 0;
+                    const token = tokens[pos];
+                    if (!isNaN(parseFloat(token))) {
+                        pos++;
+                        return parseFloat(token);
+                    }
+                    return 0;
+                };
+                
+                const parseFactor = () => {
+                    if (tokens[pos] === '(') {
+                        pos++; // skip (
+                        const result = parseAddSub();
+                        pos++; // skip )
+                        return result;
+                    }
+                    return parseNumber();
+                };
+                
+                const parseMulDiv = () => {
+                    let left = parseFactor();
+                    while (pos < tokens.length && (tokens[pos] === '*' || tokens[pos] === '/')) {
+                        const op = tokens[pos++];
+                        const right = parseFactor();
+                        if (op === '*') left *= right;
+                        else if (op === '/' && right !== 0) left /= right;
+                    }
+                    return left;
+                };
+                
+                const parseAddSub = () => {
+                    let left = parseMulDiv();
+                    while (pos < tokens.length && (tokens[pos] === '+' || tokens[pos] === '-')) {
+                        const op = tokens[pos++];
+                        const right = parseMulDiv();
+                        if (op === '+') left += right;
+                        else left -= right;
+                    }
+                    return left;
+                };
+                
+                return parseAddSub();
+            };
+            
+            const isExpression = (value) => {
+                return /[\+\-\*\/]/.test(value) && /\d/.test(value);
+            };
 
             const calculateAndRender = () => {
                 let totalFacturado = 0;
@@ -188,7 +284,7 @@
                 const reporteValues = {};
                 reporteData.forEach(item => {
                     const input = document.getElementById(`reporte-input-${item.id}`);
-                    reporteValues[item.id] = parseFloat(input.value) || 0;
+                    reporteValues[item.id] = parseExpression(input.value);
                 });
 
                 const asaVie = reporteValues.asados + reporteValues.viejos;
@@ -233,16 +329,26 @@
             const handleInput = (event) => {
                 const input = event.target;
                 
-                // Permitir solo números, punto y coma
-                input.value = input.value.replace(/[^0-9.,]/g, '');
+                // Permitir solo números, punto, coma y operadores matemáticos
+                input.value = input.value.replace(/[^0-9.,+\-*/() ]/g, '');
                 
-                // Convertir comas a puntos
+                // Convertir comas a puntos y mostrar toast
                 if (input.value.includes(',')) {
-                    input.value = input.value.replace(/,/g, '.');
                     showToast();
                 }
                 
                 calculateAndRender();
+            };
+            
+            const handleBlur = (event) => {
+                const input = event.target;
+                const value = input.value.trim();
+                
+                // Si es una expresión, mostrar el resultado
+                if (isExpression(value)) {
+                    const result = parseExpression(value);
+                    showExpressionToast(value.replace(/,/g, '.'), formatPollos(result));
+                }
             };
 
             const facturacionBody = document.getElementById('facturacion-body');
@@ -265,16 +371,39 @@
             const reporteBody = document.getElementById('reporte-body');
             reporteData.forEach(item => {
                 const div = document.createElement('div');
-                div.className = 'flex items-center justify-between';
+                div.className = 'space-y-1';
                 div.innerHTML = `
-                    <label for="reporte-input-${item.id}" class="capitalize text-slate-600 font-medium">${item.label}</label>
-                    <input type="text" inputmode="decimal" id="reporte-input-${item.id}" value="${item.value}" class="w-28 text-right bg-slate-50 rounded-md border-slate-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 px-2 py-1" placeholder="0">
+                    <div class="flex items-center justify-between">
+                        <label for="reporte-input-${item.id}" class="capitalize text-slate-600 font-medium">${item.label}</label>
+                        <input type="text" inputmode="text" id="reporte-input-${item.id}" value="${item.value}" class="w-32 text-right bg-slate-50 rounded-md border-slate-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 px-2 py-1 font-mono text-sm" placeholder="0 o 4+3/8">
+                    </div>
+                    <div id="reporte-result-${item.id}" class="text-right text-xs text-orange-600 font-medium hidden"></div>
                 `;
                 reporteBody.appendChild(div);
             });
 
             document.querySelectorAll('input[type="text"]').forEach(input => {
                 input.addEventListener('input', handleInput);
+                
+                // Solo para inputs del reporte, agregar blur handler
+                if (input.id.startsWith('reporte-input-')) {
+                    input.addEventListener('blur', handleBlur);
+                    
+                    // Mostrar resultado en tiempo real debajo del input
+                    input.addEventListener('input', () => {
+                        const itemId = input.id.replace('reporte-input-', '');
+                        const resultDiv = document.getElementById(`reporte-result-${itemId}`);
+                        const value = input.value.trim();
+                        
+                        if (isExpression(value)) {
+                            const result = parseExpression(value);
+                            resultDiv.textContent = `= ${formatPollos(result)}`;
+                            resultDiv.classList.remove('hidden');
+                        } else {
+                            resultDiv.classList.add('hidden');
+                        }
+                    });
+                }
             });
 
             calculateAndRender();
@@ -282,4 +411,3 @@
     </script>
 </body>
 </html>
-
